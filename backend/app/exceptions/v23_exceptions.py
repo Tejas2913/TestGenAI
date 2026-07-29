@@ -44,3 +44,31 @@ class ValidationError(WorkflowError):
     def __init__(self, field_name: str, message: str) -> None:
         super().__init__(f"Validation failed for '{field_name}': {message}")
         self.field_name = field_name
+
+
+class ProviderError(WorkflowError):
+    """Base exception for LLM provider errors."""
+
+    def __init__(self, provider_name: str, message: str) -> None:
+        super().__init__(f"Provider [{provider_name}] error: {message}")
+        self.provider_name = provider_name
+
+
+class ProviderTimeoutError(ProviderError):
+    """Raised when provider call times out."""
+    pass
+
+
+class ProviderUnavailableError(ProviderError):
+    """Raised when provider is down or unreachable."""
+    pass
+
+
+class ProviderAuthenticationError(ProviderError):
+    """Raised when provider API key authentication fails."""
+    pass
+
+
+class ProviderRateLimitError(ProviderError):
+    """Raised when provider rate limit is exceeded."""
+    pass

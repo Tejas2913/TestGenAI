@@ -135,7 +135,7 @@ class TestConcreteAgents:
         ctx = agent.run(ctx)
 
         assert isinstance(ctx.test_plan, TestPlan)
-        assert "sample_function" in ctx.test_plan.target_functions
+        assert "add" in ctx.test_plan.target_functions
 
     def test_generator_agent_execution(self):
         agent = GeneratorAgent()

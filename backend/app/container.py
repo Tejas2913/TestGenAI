@@ -38,13 +38,13 @@ class ApplicationContainer:
         self.context_cache = ContextCache()
         self.repository_index = RepositoryContextIndex()
         self.prompt_repository = PromptRepository()
-        self.prompt_builder = PromptBuilder(self.prompt_repository)
+        self.prompt_builder = PromptBuilder()
         self.prompt_manager = PromptManager(self.prompt_repository, self.prompt_builder)
 
         # Routing & LLM Providers
         self.routing_strategy = BalancedStrategy()
-        self.provider_evaluator = ProviderEvaluator(strategy=self.routing_strategy)
-        self.provider_router = LLMProviderRouter(provider_evaluator=self.provider_evaluator)
+        self.provider_evaluator = ProviderEvaluator(default_strategy=self.routing_strategy)
+        self.provider_router = LLMProviderRouter(evaluator=self.provider_evaluator)
 
         # Analytics
         self.token_cost_tracker = TokenCostTracker()

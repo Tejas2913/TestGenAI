@@ -23,13 +23,27 @@ class GenerationRequest:
 
 @dataclass(frozen=True)
 class RepositoryContext:
-    """Workspace AST context representation (imports, types, call graph, fixtures)."""
+    """Workspace AST context representation (imports, types, call graph, fixtures, symbols, frameworks)."""
 
     file_path: Optional[str] = None
     imports: List[str] = field(default_factory=list)
     custom_types: List[str] = field(default_factory=list)
     pytest_fixtures: List[str] = field(default_factory=list)
     call_graph: Dict[str, Any] = field(default_factory=dict)
+
+    # Extended Phase 3 AST Repository Fields
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    languages: List[str] = field(default_factory=list)
+    packages: List[str] = field(default_factory=list)
+    modules: List[Dict[str, Any]] = field(default_factory=list)
+    files: List[str] = field(default_factory=list)
+    classes: List[Dict[str, Any]] = field(default_factory=list)
+    functions: List[Dict[str, Any]] = field(default_factory=list)
+    dependencies: List[str] = field(default_factory=list)
+    frameworks: Dict[str, float] = field(default_factory=dict)
+    existing_tests: List[Dict[str, Any]] = field(default_factory=list)
+    statistics: Dict[str, int] = field(default_factory=dict)
+    indexing_summary: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -86,12 +100,17 @@ class ProviderDecision:
 
 @dataclass(frozen=True)
 class PromptPayload:
-    """Rendered prompt payload with metadata."""
+    """Rendered provider-agnostic prompt payload with metadata."""
 
     template_name: str
     rendered_system: str
     rendered_user: str
     version: str = "v2.3"
+    agent_name: str = ""
+    repository_summary: str = ""
+    prompt_version: str = "v2.3"
+    estimated_tokens: int = 0
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
