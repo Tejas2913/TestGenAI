@@ -1,0 +1,23 @@
+"""Auto-generated tests for {{ function_name }}."""
+
+import pytest
+{% for imp in imports %}
+{{ imp }}
+{% endfor %}
+
+{% if setup_code %}
+
+{{ setup_code }}
+{% endif %}
+{% for tc in test_cases %}
+
+
+def {{ tc.name }}():
+    """{{ tc.description }}
+
+    Category: {{ tc.category }}
+    """
+{% for assertion in tc.assertions %}
+    {{ assertion }}
+{% endfor %}
+{% endfor %}

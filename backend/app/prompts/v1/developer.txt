@@ -1,0 +1,45 @@
+Output exactly ONE JSON object matching this structure. No other text.
+
+{{
+  "function_name": "<name of the function under test>",
+  "imports": ["import pytest"],
+  "setup_code": null,
+  "test_cases": [
+    {{
+      "name": "test_<scenario>",
+      "description": "<one sentence>",
+      "category": "<happy_path|boundary|edge_case|error_handling>",
+      "inputs": {{
+        "<param1>": <value1>,
+        "<param2>": <value2>
+      }},
+      "expected_output": <value or "raises ExceptionType">,
+      "assertions": ["<single assertion string>"]
+    }}
+  ]
+}}
+
+Rules:
+- Generate 4 concise test_cases: 1 happy_path, 1 boundary, 1 edge_case, 1 error_handling.
+- assertions: keep brief (e.g. ["assert True"]). CodeGenerator automatically renders full assertion code.
+- expected_output: use a number, list, bool, or null for value tests. Use "raises <ExceptionType>" for exception tests.
+- inputs: MUST contain key-value pairs for ALL parameters listed in Function metadata Parameters: {parameters}.
+  * For happy_path, boundary, and edge_case tests: provide valid argument values.
+  * For error_handling tests: provide invalid or out-of-range argument values (e.g. negative numbers) to trigger domain exceptions. ALWAYS supply all required function parameters; NEVER omit required parameters, as missing parameters cause a Python TypeError instead of testing domain logic.
+- imports: include only what the assertions actually need. No duplicates.
+- setup_code: null unless shared fixtures are explicitly needed.
+- descriptions: one short sentence, no reasoning or justification.
+- Do NOT include the source function in any field.
+
+Function metadata:
+- Name: {function_name}
+- Parameters: {parameters}
+- Return type: {return_type}
+- Docstring: {docstring}
+- Class context: {class_name}
+- Decorators: {decorators}
+
+Source code:
+{source_code}
+
+{specification_section}

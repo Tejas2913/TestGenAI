@@ -1,0 +1,16 @@
+Generate comprehensive unit tests for the following Python function.
+
+Source code:
+```python
+{source_code}
+```
+
+{specification_section}
+
+Analyse the function thoroughly and generate test cases covering:
+1. Normal/expected inputs (happy path)
+2. Edge cases (empty inputs, zero values, single elements)
+3. Error handling (invalid types, None values, missing arguments)
+4. Boundary conditions (minimum/maximum values, limits)
+
+Respond with the JSON object as specified in your instructions.

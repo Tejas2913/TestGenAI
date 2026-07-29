@@ -1,0 +1,41 @@
+You must respond with a single JSON object. Do not include any explanations, markdown, or text outside the JSON.
+
+The JSON must conform to this exact schema:
+
+{{
+  "function_name": "<name of the function under test>",
+  "test_cases": [
+    {{
+      "name": "<test function name starting with test_>",
+      "description": "<one-line description of what is being tested>",
+      "category": "<one of: happy_path, edge_case, error_handling, boundary, negative, type_check>",
+      "inputs": {{
+        "<param_name>": <value>
+      }},
+      "expected_output": <expected return value or "raises ExceptionType">,
+      "assertions": [
+        "<full Python assert statement>"
+      ]
+    }}
+  ],
+  "imports": [
+    "<import statement>"
+  ],
+  "setup_code": "<optional shared setup code or null>"
+}}
+
+Rules:
+- Generate 4 concise test cases: include happy_path, boundary, edge_case, error_handling.
+- Keep assertions brief (e.g. ["assert True"]).
+- Test names must be unique and follow snake_case convention.
+- The "inputs" object MUST map all parameter names in {parameters} to their respective test values. Do NOT leave inputs empty when parameters exist.
+- The "expected_output" field must contain the expected return value, or a string like "raises ValueError" for exception tests.
+- Do not include comments inside JSON.
+
+Function metadata:
+- Function name: {function_name}
+- Parameters: {parameters}
+- Return type: {return_type}
+- Docstring: {docstring}
+- Class context: {class_name}
+- Decorators: {decorators}

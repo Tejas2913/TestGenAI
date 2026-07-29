@@ -1,0 +1,17 @@
+# =============================================================================
+# TestGen AI — Sandbox image Python dependencies
+#
+# Keep this list minimal: only packages needed to *run* generated pytest suites.
+# Do NOT add development, linting, or application dependencies here.
+#
+# Pinned versions ensure reproducible image builds.
+# =============================================================================
+
+# Test runner (required — image exists solely to run pytest)
+pytest==8.3.5
+
+# Commonly needed by generated test suites:
+pytest-mock==3.14.0       # mocker fixture (unittest.mock wrapper)
+
+# Code coverage measurement (required for line and branch coverage calculation)
+coverage==7.6.10
