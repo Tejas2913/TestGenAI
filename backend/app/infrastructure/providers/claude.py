@@ -62,6 +62,58 @@ class ClaudeProvider(BaseLLMProvider):
   "edge_cases": ["Negative inputs", "Zero addition"],
   "confidence": 0.98
 }"""
+            elif prompt_payload.agent_name.startswith("generator"):
+                mock_text = f"""{{
+  "generated_tests": [
+    {{
+      "target_module": "math_utils",
+      "target_function": "add",
+      "framework": "pytest",
+      "imports": [
+        "pytest",
+        "from app.math_utils import add"
+      ],
+      "fixtures": [],
+      "mocks": [],
+      "test_name": "test_add_positive_numbers",
+      "setup": "",
+      "test_code": "# Mock Claude Response ({self.model_name})\\ndef test_add_positive_numbers():\\n    assert add(2, 3) == 5\\n",
+      "assertions": [
+        "assert add(2, 3) == 5"
+      ],
+      "confidence": 0.96
+    }}
+  ]
+}}"""
+            elif prompt_payload.agent_name.startswith("reviewer"):
+                mock_text = f"""{{
+  "overall_score": 95.0,
+  "approved": true,
+  "summary": "# Mock Claude Response ({self.model_name}) - High quality unit test suite.",
+  "coverage_analysis": "Target functions covered.",
+  "issues": [],
+  "strengths": [
+    "Clean assertions",
+    "No test smells"
+  ],
+  "recommendations": [],
+  "confidence": 0.98
+}}"""
+            elif prompt_payload.agent_name.startswith("repair"):
+                mock_text = f"""{{
+  "repaired_tests": [
+    {{
+      "test_name": "test_add_positive_numbers",
+      "target_function": "add",
+      "test_code": "# Mock Claude Response ({self.model_name}) Repaired\\ndef test_add_positive_numbers():\\n    assert add(2, 3) == 5\\n    assert add(-1, 1) == 0\\n",
+      "repair_reason": "Added missing negative boundary assertion",
+      "fixed_issues": [
+        "Missing negative assertion"
+      ],
+      "confidence": 0.96
+    }}
+  ]
+}}"""
             else:
                 mock_text = f"# Mock Claude Response ({self.model_name})\n# Agent: {prompt_payload.agent_name}\n\ndef test_claude_sample():\n    assert True\n"
             

@@ -5,11 +5,13 @@ V2 endpoints are mounted under /api/v2 in main.py.
 Phase 1: health endpoints (/live, /ready)
 Phase 2: authentication endpoints (/auth/register, /auth/login, /auth/keys)
 Phase 3: async job endpoints (/jobs/generate, /jobs/{job_id})
+Phase 10 (v2.3): full pipeline endpoint (/generate-tests)
 """
 
 from fastapi import APIRouter
 
 from app.api.v2.auth import router as auth_router
+from app.api.v2.generate_tests import router as generate_tests_router
 from app.api.v2.health import router as health_router
 from app.api.v2.jobs import router as jobs_router
 
@@ -23,3 +25,6 @@ v2_router.include_router(auth_router)
 
 # Job endpoints — require authentication (enforced per-route in jobs.py).
 v2_router.include_router(jobs_router)
+
+# Phase 10 (v2.3): Full multi-agent pipeline endpoint — requires authentication.
+v2_router.include_router(generate_tests_router)
