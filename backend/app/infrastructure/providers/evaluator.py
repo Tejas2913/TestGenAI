@@ -30,6 +30,7 @@ class ProviderEvaluator:
         providers: Dict[str, BaseLLMProvider],
         prompt_payload: PromptPayload,
         strategy: Optional[BaseRoutingStrategy] = None,
+        metrics: Optional[Dict[str, Any]] = None,
     ) -> ProviderDecision:
         """Select optimal provider from active healthy providers.
 
@@ -37,12 +38,13 @@ class ProviderEvaluator:
             providers: Registry dictionary mapping provider names to BaseLLMProvider instances.
             prompt_payload: Incoming PromptPayload context.
             strategy: Optional routing strategy override.
+            metrics: Optional external metrics (e.g. health scores from HealthMonitor).
 
         Returns:
             ProviderDecision domain object.
         """
         active_strategy = strategy or self.default_strategy
-        
+
         # Filter healthy providers
         healthy_providers: List[str] = [
             name for name, provider in providers.items() if provider.health_check()
@@ -50,15 +52,17 @@ class ProviderEvaluator:
 
         if not healthy_providers:
             self.logger.warning("no_healthy_providers_found", total_registered=len(providers))
-            # Fallback to all registered providers if health checks fail
             healthy_providers = list(providers.keys())
 
-        metrics = {
+        # Merge internal metrics with externally provided metrics (health scores etc.)
+        combined_metrics: Dict[str, Any] = {
             "prompt_estimated_tokens": prompt_payload.estimated_tokens,
             "agent_name": prompt_payload.agent_name,
         }
+        if metrics:
+            combined_metrics.update(metrics)
 
-        decision = active_strategy.select_provider(healthy_providers, metrics)
+        decision = active_strategy.select_provider(healthy_providers, combined_metrics)
         self.logger.info(
             "provider_selected",
             selected=decision.selected_provider,

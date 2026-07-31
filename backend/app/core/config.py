@@ -58,6 +58,52 @@ class Settings(BaseSettings):
     GEMINI_MAX_RETRIES: int = 3
 
     # ----------------------------------------------------------------
+    # Phase 11 — Multi-LLM Provider Configuration
+    # ----------------------------------------------------------------
+    # When True: all providers use deterministic mock JSON (no network).
+    # When False: real API calls — requires the corresponding API keys.
+    MOCK_MODE: bool = False
+
+    # OpenAI
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o"
+
+    # Anthropic Claude
+    ANTHROPIC_API_KEY: str = ""
+    CLAUDE_MODEL: str = "claude-3-5-sonnet-20241022"
+
+    # Groq
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+
+    # OpenRouter
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "deepseek/deepseek-r1"
+
+    # ----------------------------------------------------------------
+    # Phase 8 — v2.4.0 Enterprise Provider Intelligence Configuration
+    # ----------------------------------------------------------------
+
+    # Feature flags
+    ENABLE_STREAMING: bool = True
+    ENABLE_FAILOVER: bool = True
+    ENABLE_HEALTH_MONITOR: bool = True
+    ENABLE_COST_TRACKING: bool = True
+
+    # Retry / failover
+    MAX_PROVIDER_RETRIES: int = 2
+    PROVIDER_TIMEOUT_SECONDS: float = 30.0
+
+    # Health monitor thresholds
+    HEALTH_FAILURE_THRESHOLD: float = 0.5     # exclude providers with failure_rate > this
+    HEALTH_LATENCY_THRESHOLD: float = 10000.0 # exclude providers with avg_latency_ms > this
+
+    # Routing strategy selection
+    # One of: BalancedStrategy, FastestStrategy, LowestCostStrategy,
+    #          HighestQualityStrategy, ReasoningStrategy, HealthAwareStrategy
+    ROUTING_STRATEGY: str = "BalancedStrategy"
+
+    # ----------------------------------------------------------------
     # Input limits
     # ----------------------------------------------------------------
     MAX_SOURCE_CODE_SIZE: int = 50_000   # 50 KB

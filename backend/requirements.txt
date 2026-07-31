@@ -15,3 +15,9 @@ httpx==0.28.1
 email-validator==2.2.0
 # Phase 3 — async job engine thread offloading
 anyio==4.14.2
+# Phase 11 — real LLM provider SDKs
+openai>=1.40.0
+anthropic>=0.34.0
+groq>=0.9.0
+# Test tooling
+pytest-env>=1.7.0

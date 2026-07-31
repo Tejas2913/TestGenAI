@@ -42,6 +42,22 @@ def create_test_tables():
     Base.metadata.drop_all(bind=test_engine)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def force_mock_mode():
+    """Force MOCK_MODE=True for the entire test session.
+
+    This guarantees no test ever makes a real LLM API call regardless of
+    what MOCK_MODE is set to in .env. All 578 tests remain fast and offline.
+    """
+    from app.core.config import settings
+    original = settings.MOCK_MODE
+    # pydantic-settings models are immutable by default; use object.__setattr__
+    object.__setattr__(settings, "MOCK_MODE", True)
+    yield
+    object.__setattr__(settings, "MOCK_MODE", original)
+
+
+
 @pytest.fixture()
 def db_session(create_test_tables):
     """Yield a per-test DB session wrapped in a savepoint for rollback isolation."""

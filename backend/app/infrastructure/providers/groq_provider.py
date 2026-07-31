@@ -1,12 +1,11 @@
-"""TestGen AI v2.3 — Claude (Anthropic) LLM Provider Implementation
+"""TestGen AI v2.3 — Groq LLM Provider Implementation
 
-Concrete provider for Anthropic Claude models (claude-3-5-sonnet, claude-3-haiku, etc.).
-Translates PromptPayload objects into Claude Messages API requests and normalizes responses
-into ProviderResponse.
+Concrete provider for Groq-hosted models (llama-3.3-70b-versatile, etc.).
+Uses the official Groq Python SDK (groq>=0.9.0).
 
 Modes:
-  mock_mode=True  → Returns deterministic JSON responses.  No network call.  Used by all tests.
-  mock_mode=False → Calls the real Anthropic Messages API via anthropic SDK.
+  mock_mode=True  → Deterministic JSON responses. No network. Used by all tests.
+  mock_mode=False → Real Groq API via groq SDK.
 """
 
 import os
@@ -28,36 +27,35 @@ from app.infrastructure.providers.base import BaseLLMProvider
 logger = structlog.get_logger()
 
 # ---------------------------------------------------------------------------
-# Claude cost table (USD per 1 000 tokens, claude-3-5-sonnet-20241022 pricing)
+# Groq cost table (USD per 1 000 tokens — llama-3.3-70b-versatile pricing)
+# Groq pricing: https://console.groq.com/docs/models
 # ---------------------------------------------------------------------------
-_COST_PER_1K_INPUT = 0.003    # $3.00 / 1M input tokens
-_COST_PER_1K_OUTPUT = 0.015   # $15.00 / 1M output tokens
+_COST_PER_1K_INPUT = 0.00059   # $0.59 / 1M input tokens
+_COST_PER_1K_OUTPUT = 0.00079  # $0.79 / 1M output tokens
 
-# Default model identifier accepted by the Anthropic API
-_DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
+_DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 
-class ClaudeProvider(BaseLLMProvider):
-    """Anthropic Claude LLM provider implementation.
+class GroqProvider(BaseLLMProvider):
+    """Groq LLM provider implementation.
 
-    Supports both mock mode (for unit testing without network) and
-    real API mode (production) via the anthropic SDK.
+    Supports both mock mode (offline testing) and real API mode via the groq SDK.
+    Groq's API is OpenAI-compatible; uses Chat Completions format.
     """
 
     def __init__(
         self,
-        model_name: str = "claude-3-5-sonnet",
+        model_name: str = _DEFAULT_MODEL,
         api_key: Optional[str] = None,
         mock_mode: bool = False,
     ) -> None:
         super().__init__(
-            provider_name="Claude",
+            provider_name="Groq",
             model_name=model_name,
             cost_per_1k_input=_COST_PER_1K_INPUT,
             cost_per_1k_output=_COST_PER_1K_OUTPUT,
         )
-        # Resolve key: explicit arg > env var
-        self.api_key = api_key if api_key is not None else os.getenv("ANTHROPIC_API_KEY", "")
+        self.api_key = api_key if api_key is not None else os.getenv("GROQ_API_KEY", "")
         self.mock_mode = mock_mode or not bool(self.api_key)
 
     # ------------------------------------------------------------------
@@ -78,7 +76,7 @@ class ClaudeProvider(BaseLLMProvider):
     def stream_generate(
         self, prompt_payload: PromptPayload, options: Optional[Dict[str, Any]] = None
     ):
-        """Stream generation yielding StreamChunk objects via Anthropic streaming API."""
+        """Stream generation yielding StreamChunk objects via Groq streaming API."""
         from app.infrastructure.providers.streaming import StreamChunk, stream_from_response
 
         if self.mock_mode:
@@ -90,35 +88,41 @@ class ClaudeProvider(BaseLLMProvider):
             return
 
         try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=self.api_key)
-            system_prompt, user_messages = _split_prompt(prompt_payload)
+            from groq import Groq
+            client = Groq(api_key=self.api_key)
+            messages = _build_messages(prompt_payload)
+            temperature = (options or {}).get("temperature", 0.3)
             max_tokens = (options or {}).get("max_tokens", 4096)
             start_time = time.perf_counter()
             accumulated = ""
             prompt_tokens = prompt_payload.estimated_tokens
 
-            kwargs = dict(
+            stream = client.chat.completions.create(
                 model=self.model_name,
+                messages=messages,
+                temperature=temperature,
                 max_tokens=max_tokens,
-                messages=user_messages,
+                stream=True,
             )
-            if system_prompt:
-                kwargs["system"] = system_prompt
-
-            with client.messages.stream(**kwargs) as stream:
-                for delta in stream.text_stream:
-                    accumulated += delta
-                    elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                    yield StreamChunk(
-                        provider_name=self.provider_name,
-                        model_name=self.model_name,
-                        delta=delta,
-                        accumulated=accumulated,
-                        latency_ms=elapsed_ms,
-                        is_final=False,
-                        metadata={"mock": False},
-                    )
+            for sdk_chunk in stream:
+                delta = ""
+                if sdk_chunk.choices and sdk_chunk.choices[0].delta.content:
+                    delta = sdk_chunk.choices[0].delta.content
+                accumulated += delta
+                elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                finish = None
+                if sdk_chunk.choices and sdk_chunk.choices[0].finish_reason:
+                    finish = sdk_chunk.choices[0].finish_reason
+                yield StreamChunk(
+                    provider_name=self.provider_name,
+                    model_name=self.model_name,
+                    delta=delta,
+                    accumulated=accumulated,
+                    finish_reason=finish,
+                    latency_ms=elapsed_ms,
+                    is_final=bool(finish),
+                    metadata={"mock": False},
+                )
 
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
             completion_tokens = self.estimate_tokens(accumulated)
@@ -183,7 +187,7 @@ class ClaudeProvider(BaseLLMProvider):
       "mocks": [],
       "test_name": "test_add_positive_numbers",
       "setup": "",
-      "test_code": "# Mock Claude Response ({self.model_name})\\ndef test_add_positive_numbers():\\n    assert add(2, 3) == 5\\n",
+      "test_code": "# Mock Groq Response ({self.model_name})\\ndef test_add_positive_numbers():\\n    assert add(2, 3) == 5\\n",
       "assertions": [
         "assert add(2, 3) == 5"
       ],
@@ -195,7 +199,7 @@ class ClaudeProvider(BaseLLMProvider):
             mock_text = f"""{{
   "overall_score": 95.0,
   "approved": true,
-  "summary": "# Mock Claude Response ({self.model_name}) - High quality unit test suite.",
+  "summary": "# Mock Groq Response ({self.model_name}) - High quality unit test suite.",
   "coverage_analysis": "Target functions covered.",
   "issues": [],
   "strengths": [
@@ -211,7 +215,7 @@ class ClaudeProvider(BaseLLMProvider):
     {{
       "test_name": "test_add_positive_numbers",
       "target_function": "add",
-      "test_code": "# Mock Claude Response ({self.model_name}) Repaired\\ndef test_add_positive_numbers():\\n    assert add(2, 3) == 5\\n    assert add(-1, 1) == 0\\n",
+      "test_code": "# Mock Groq Response ({self.model_name}) Repaired\\ndef test_add_positive_numbers():\\n    assert add(2, 3) == 5\\n    assert add(-1, 1) == 0\\n",
       "repair_reason": "Added missing negative boundary assertion",
       "fixed_issues": [
         "Missing negative assertion"
@@ -222,14 +226,13 @@ class ClaudeProvider(BaseLLMProvider):
 }}"""
         else:
             mock_text = (
-                f"# Mock Claude Response ({self.model_name})\n"
+                f"# Mock Groq Response ({self.model_name})\n"
                 f"# Agent: {agent}\n\n"
-                "def test_claude_sample():\n    assert True\n"
+                "def test_groq_sample():\n    assert True\n"
             )
 
         prompt_tokens = prompt_payload.estimated_tokens
         completion_tokens = self.estimate_tokens(mock_text)
-        total_tokens = prompt_tokens + completion_tokens
 
         return ProviderResponse(
             provider_name=self.provider_name,
@@ -238,14 +241,14 @@ class ClaudeProvider(BaseLLMProvider):
             finish_reason="stop",
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
-            total_tokens=total_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
             latency_ms=elapsed_ms,
             estimated_cost=self.estimate_cost(prompt_tokens, completion_tokens),
             metadata={"mock": True, "agent": agent},
         )
 
     # ------------------------------------------------------------------
-    # Real path — Anthropic SDK
+    # Real path — Groq SDK
     # ------------------------------------------------------------------
 
     def _generate_real(
@@ -254,56 +257,47 @@ class ClaudeProvider(BaseLLMProvider):
         options: Dict[str, Any],
         start_time: float,
     ) -> ProviderResponse:
-        """Call the real Anthropic Messages API."""
+        """Call the real Groq Chat Completions API."""
         if not self.api_key:
             raise ProviderAuthenticationError(
                 self.provider_name,
-                "ANTHROPIC_API_KEY is missing. Set it in .env or pass api_key= explicitly.",
+                "GROQ_API_KEY is missing or invalid. Set it in .env or pass api_key= explicitly.",
             )
 
         try:
-            import anthropic
+            from groq import Groq
         except ImportError as exc:
             raise ProviderUnavailableError(
                 self.provider_name,
-                "anthropic SDK not installed. Run: pip install anthropic>=0.34.0",
+                "groq SDK not installed. Run: pip install groq>=0.9.0",
             ) from exc
 
         try:
-            client = anthropic.Anthropic(api_key=self.api_key)
+            client = Groq(api_key=self.api_key)
 
-            system_prompt, user_messages = _split_prompt(prompt_payload)
+            messages = _build_messages(prompt_payload)
+            temperature = options.get("temperature", 0.3)
             max_tokens = options.get("max_tokens", 4096)
 
-            # Build kwargs — system is optional
-            kwargs: Dict[str, Any] = {
-                "model": self.model_name,
-                "max_tokens": max_tokens,
-                "messages": user_messages,
-            }
-            if system_prompt:
-                kwargs["system"] = system_prompt
-
-            response = client.messages.create(**kwargs)
+            response = client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
 
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
-
-            # Extract text from content blocks
-            response_text = ""
-            for block in response.content:
-                if hasattr(block, "text"):
-                    response_text += block.text
-
-            finish_reason = str(response.stop_reason).lower() if response.stop_reason else "stop"
+            response_text = response.choices[0].message.content or ""
+            finish_reason = response.choices[0].finish_reason or "stop"
 
             # Token accounting from SDK
             usage = response.usage
-            prompt_tokens = usage.input_tokens if usage else self.estimate_tokens(system_prompt or "")
-            completion_tokens = usage.output_tokens if usage else self.estimate_tokens(response_text)
-            total_tokens = prompt_tokens + completion_tokens
+            prompt_tokens = usage.prompt_tokens if usage else self.estimate_tokens(str(messages))
+            completion_tokens = usage.completion_tokens if usage else self.estimate_tokens(response_text)
+            total_tokens = usage.total_tokens if usage else (prompt_tokens + completion_tokens)
 
             self.logger.info(
-                "claude_generate_success",
+                "groq_generate_success",
                 agent=prompt_payload.agent_name,
                 model=self.model_name,
                 prompt_tokens=prompt_tokens,
@@ -339,16 +333,18 @@ class ClaudeProvider(BaseLLMProvider):
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _split_prompt(prompt_payload: PromptPayload):
-    """Split PromptPayload into (system_prompt, user_messages list) for Claude API format."""
-    system_prompt = prompt_payload.rendered_system or None
-    user_content = prompt_payload.rendered_user or ""
-    user_messages = [{"role": "user", "content": user_content}] if user_content else []
-    return system_prompt, user_messages
+def _build_messages(prompt_payload: PromptPayload) -> list:
+    """Build chat messages list from PromptPayload."""
+    messages = []
+    if prompt_payload.rendered_system:
+        messages.append({"role": "system", "content": prompt_payload.rendered_system})
+    if prompt_payload.rendered_user:
+        messages.append({"role": "user", "content": prompt_payload.rendered_user})
+    return messages
 
 
 def _raise_mapped_exception(provider_name: str, exc: Exception) -> None:
-    """Map Anthropic SDK exceptions into the provider exception hierarchy."""
+    """Map Groq SDK exceptions into the provider exception hierarchy."""
     exc_type = type(exc).__name__.lower()
     exc_str = str(exc).lower()
     if "authenticationerror" in exc_type or "api_key" in exc_str or "401" in exc_str:
@@ -357,6 +353,6 @@ def _raise_mapped_exception(provider_name: str, exc: Exception) -> None:
         raise ProviderTimeoutError(provider_name, f"Request timed out: {exc}") from exc
     if "ratelimiterror" in exc_type or "rate_limit" in exc_str or "429" in exc_str:
         raise ProviderRateLimitError(provider_name, f"Rate limit exceeded: {exc}") from exc
-    if "overloadederror" in exc_type or "503" in exc_str or "connection" in exc_str:
+    if "apierror" in exc_type or "503" in exc_str or "connection" in exc_str:
         raise ProviderUnavailableError(provider_name, f"Provider unavailable: {exc}") from exc
     raise ProviderError(provider_name, f"Unexpected provider error: {exc}") from exc
