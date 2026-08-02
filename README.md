@@ -4,7 +4,7 @@
 
 ### Production-Ready Multi-Agent AI Framework for Automated Test Generation
 
-*Intelligently generate high-quality software tests using a coordinated pipeline of specialized AI agents across multiple LLM providers.*
+*Automate test generation using a coordinated pipeline of specialized AI agents across multiple LLM providers — from planning through review and conditional repair.*
 
 ---
 
@@ -25,15 +25,15 @@
 
 TestGen AI is a **multi-agent AI framework** that automates the generation of software test suites for Python codebases. It decomposes the test generation problem into four specialized agents — Planner, Generator, Reviewer, and Repair — each powered by the LLM provider best suited for the task.
 
-The system is built for software teams who need reproducible, high-quality tests without spending hours writing them manually. It analyses your repository structure, understands your codebase semantics, generates tests that follow your existing conventions, reviews them for quality, and automatically repairs failures — all in a single workflow.
+The system is built for software teams looking to automate repetitive test authoring. It analyses available repository structure and source-code context (imports, functions, fixtures, dependencies) using static AST parsing, generates structured test code, evaluates it through an independent review step, and conditionally invokes the RepairAgent when the review is not approved — all in a single workflow.
 
 **What makes it different from a simple "ask ChatGPT to write tests" approach:**
 
 - A dedicated **Planner** agent analyses repository structure and identifies the highest-priority test targets
 - A **Generator** agent produces structured test code following project conventions
 - A **Reviewer** agent assesses quality, coverage, and correctness
-- A **Repair** agent fixes detected issues in a feedback loop
-- An **enterprise-grade provider layer** routes requests across 5 LLMs with health monitoring, failover, and cost tracking — so a provider outage never blocks your pipeline
+- A **Repair** agent performs LLM-driven surgical refinement of tests that the Reviewer has not approved
+- An **enterprise-oriented provider intelligence layer** routes requests across 5 LLMs with health monitoring, automatic failover, and cost tracking — helping maintain availability when an individual provider fails or becomes degraded
 
 ---
 
@@ -42,7 +42,7 @@ The system is built for software teams who need reproducible, high-quality tests
 | Feature                               | Description                                                                  |
 | ------------------------------------- | ---------------------------------------------------------------------------- |
 | 🤖**Multi-Agent Workflow**      | Four coordinated agents: Planner → Generator → Reviewer → Repair          |
-| 🔍**Repository Context Engine** | Semantic analysis of your codebase structure and conventions                 |
+| 🔍**Repository Context Engine** | Static AST-based analysis: imports, functions, classes, fixtures, dependencies |
 | 📝**Prompt Management**         | Jinja2-powered template system with per-agent, per-domain templates          |
 | 🔀**Multi-Provider Routing**    | 5 LLM providers with pluggable routing strategies                            |
 | 📋**Provider Registry**         | Central metadata registry — capabilities, costs, latency per provider       |
@@ -67,7 +67,7 @@ The system is built for software teams who need reproducible, high-quality tests
 ```mermaid
 flowchart TD
     Client(["👤 Client / API"])
-    API["🌐 FastAPI REST API\n/api/v2/generate"]
+    API["🌐 FastAPI REST API\n/api/v2/generate-tests/"]
     Auth["🔐 Auth Layer\nJWT + API Keys"]
     Workflow["🎯 AgentWorkflow\nOrchestrator"]
 
@@ -77,7 +77,7 @@ flowchart TD
     Repair["🔧 RepairAgent\nFailure Correction"]
 
     PromptMgr["📝 PromptManager\nJinja2 Templates"]
-    CtxEngine["🔍 RepositoryContextIndex\nSemantic Analysis"]
+    CtxEngine["🔍 RepositoryContextIndex\nAST Analysis"]
     Router["🔀 LLMProviderRouter"]
     Sandbox["🏖️ Sandbox\nDocker Execution"]
 
@@ -106,7 +106,7 @@ sequenceDiagram
     participant X as RepairAgent
     participant L as LLMProviderRouter
 
-    C->>W: POST /api/v2/generate {source_code, spec}
+    C->>W: POST /api/v2/generate-tests/ {source_code, spec}
     W->>P: analyse(repository_context)
     P->>L: execute_prompt(plan_payload)
     L-->>P: PlannerOutput {priority_modules, test_cases}
@@ -178,13 +178,15 @@ flowchart LR
 
 ## Provider Ecosystem
 
-| Provider                         | Streaming | JSON | Vision | Reasoning |     Context | Latency | Quality |
-| -------------------------------- | :-------: | :--: | :----: | :-------: | ----------: | ------: | :-----: |
-| **Gemini 2.0 Flash**       |    ✅    |  ✅  |   ✅   |    ✅    |   1M tokens |  ~800ms |  0.88  |
-| **OpenAI GPT-4o**          |    ✅    |  ✅  |   ✅   |    ✅    | 128K tokens | ~1200ms |  0.92  |
-| **Claude 3.5 Sonnet**      |    ✅    |  ✅  |   ✅   |    ✅    | 200K tokens | ~1500ms |  0.94  |
-| **Groq Llama 3.3**         |    ✅    |  ✅  |   ❌   |    ❌    | 128K tokens |  ~250ms |  0.82  |
-| **OpenRouter DeepSeek-R1** |    ✅    |  ✅  |   ❌   |    ✅    | 128K tokens | ~2000ms |  0.86  |
+| Provider                         | Streaming | JSON | Vision | Reasoning |     Context | Configured Typical Latency | Configured Quality Score |
+| -------------------------------- | :-------: | :--: | :----: | :-------: | ----------: | -------------------------: | :----------------------: |
+| **Gemini 2.0 Flash**       |    ✅    |  ✅  |   ✅   |    ✅    |   1M tokens |                     ~800ms |           0.88           |
+| **OpenAI GPT-4o**          |    ✅    |  ✅  |   ✅   |    ✅    | 128K tokens |                    ~1200ms |           0.92           |
+| **Claude 3.5 Sonnet**      |    ✅    |  ✅  |   ✅   |    ✅    | 200K tokens |                    ~1500ms |           0.94           |
+| **Groq Llama 3.3**         |    ✅    |  ✅  |   ❌   |    ❌    | 128K tokens |                     ~250ms |           0.82           |
+| **OpenRouter DeepSeek-R1** |    ✅    |  ✅  |   ❌   |    ✅    | 128K tokens |                    ~2000ms |           0.86           |
+
+> **Note:** Latency and quality values are routing configuration metadata defined in `provider_metadata.py` and used by routing strategies. They are not independently benchmarked measurements from this project. Actual provider performance will vary.
 
 All providers operate in **mock mode** for offline testing with deterministic, reproducible responses. Switch to real mode by setting the corresponding API key.
 
@@ -378,51 +380,52 @@ ROUTING_STRATEGY=BalancedStrategy
 ### Generate Tests via REST API
 
 ```bash
-curl -X POST http://localhost:8000/api/v2/generate \
+curl -X POST http://localhost:8000/api/v2/generate-tests/ \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your-token>" \
   -d '{
     "source_code": "def add(a: int, b: int) -> int:\n    return a + b",
     "specification": "Function that adds two integers",
     "language": "python",
-    "routing_strategy": "BalancedStrategy"
+    "framework": "pytest"
   }'
 ```
 
 <details>
-<summary>Example Response</summary>
+<summary>Illustrative Example Response (field names are accurate; values are representative, not from a recorded run)</summary>
 
 ```json
 {
   "workflow_id": "wf-a3f9c2d1",
+  "request_id": "...",
   "status": "completed",
-  "generated_tests": "import pytest\nfrom math_utils import add\n\ndef test_add_positive_numbers():\n    assert add(2, 3) == 5\n\ndef test_add_negative_numbers():\n    assert add(-1, -2) == -3\n\ndef test_add_zero():\n    assert add(0, 5) == 5\n\ndef test_add_large_numbers():\n    assert add(1000000, 999999) == 1999999",
-  "provider_used": "Gemini",
-  "model": "gemini-2.0-flash",
-  "total_tokens": 842,
-  "estimated_cost_usd": 0.000126,
-  "latency_ms": 1240.5,
-  "agents_executed": ["planner", "generator", "reviewer"],
-  "quality_score": 0.91
+  "generated_test_count": 4,
+  "repair_count": 0,
+  "review_score": 91.5,
+  "approved": true,
+  "total_execution_ms": "<pipeline wall-clock time>",
+  "estimated_cost_usd": "<cumulative LLM cost estimate>",
+  "generated_tests": ["..."],
+  "review_report": {"is_approved": true, "overall_score": 91.5, "issues": []},
+  "repair_history": [],
+  "reasoning_traces": ["..."],
+  "provider_decisions": ["..."],
+  "repository_metadata": {"...": "..."},
+  "test_plan_summary": {"...": "..."}
 }
 ```
 
 </details>
 
-### Streaming Generation
+### Streaming (Provider / Router Level)
 
-```bash
-curl -X POST http://localhost:8000/api/v2/generate/stream \
-  -H "Authorization: Bearer <your-token>" \
-  -d '{"source_code": "...", "specification": "..."}'
-```
+Streaming is supported at the Python provider and router level via `stream_generate()` on all five providers. There is no dedicated streaming REST endpoint in the current release — the `POST /api/v2/generate-tests/` endpoint returns the complete result synchronously.
 
 <details>
-<summary>Python streaming client example</summary>
+<summary>Python streaming client example (direct router usage)</summary>
 
 ```python
 from app.infrastructure.providers.router import LLMProviderRouter
-from app.infrastructure.providers.streaming import collect_stream
 from app.domain.v23_models import PromptPayload
 
 router = LLMProviderRouter()
@@ -503,10 +506,10 @@ for provider, health in analytics["health"].items():
    → checks: coverage, assertions, edge cases, naming
         │
    ┌────┴────┐
-   │  Issues │ → RepairAgent corrects failures
-   │  found? │   and re-evaluates
+   │  Review │ → RepairAgent performs LLM-driven
+   │ approved│   surgical refinement (if NOT approved)
    └────┬────┘
-        │ No issues
+        │ Approved / no repair needed
         ▼
 5. WorkflowResult returned
    → generated_tests, quality_score, provider_analytics, cost_summary
@@ -555,26 +558,25 @@ pytest tests/v2/test_v24_enterprise_providers.py::TestProviderHealthMonitor -v
 
 ## Performance
 
-All measurements are for in-process components only (no network).
+All in-process provider orchestration components are designed to be lightweight. No specific latency benchmarks have been independently measured for this project; the characterisations below are qualitative.
 
-| Component                                       | Overhead per Request |
-| ----------------------------------------------- | -------------------- |
-| `ProviderRegistry.rank_by()`                  | < 0.1 ms             |
-| `HealthAwareStrategy.select_provider()`       | < 0.1 ms             |
-| `ProviderHealthMonitor.record_outcome()`      | < 0.1 ms             |
-| `ProviderCostTracker.record()`                | < 0.1 ms             |
-| `ProviderFailoverManager` (no retry path)     | < 0.1 ms             |
-| **Total provider orchestration overhead** | **< 1 ms**     |
+| Component | Characteristic |
+| --------- | -------------- |
+| `ProviderRegistry.rank_by()` | In-memory sort over a small fixed list (5 providers) |
+| `HealthAwareStrategy.select_provider()` | In-memory filter + sort over provider health metrics |
+| `ProviderHealthMonitor.record_outcome()` | Thread-safe in-memory counter increment |
+| `ProviderCostTracker.record()` | Thread-safe in-memory accumulator update |
+| `ProviderFailoverManager` (no retry path) | Single pass-through to provider, no additional overhead |
 
-Actual generation latency is determined entirely by the upstream LLM API:
+Dominant latency in any request is the upstream LLM API round-trip. The values below are the **configured** `typical_latency_ms` metadata entries from `provider_metadata.py` — they are routing heuristics, not independently measured benchmarks.
 
-| Provider                 | Typical First Token | Typical Full Response |
-| ------------------------ | ------------------- | --------------------- |
-| Groq (Llama 3.3)         | ~150ms              | ~250ms                |
-| Gemini 2.0 Flash         | ~400ms              | ~800ms                |
-| OpenAI GPT-4o            | ~600ms              | ~1200ms               |
-| Claude 3.5 Sonnet        | ~800ms              | ~1500ms               |
-| OpenRouter (DeepSeek-R1) | ~1000ms             | ~2000ms               |
+| Provider                 | Configured Typical Latency |
+| ------------------------ | -------------------------: |
+| Groq (Llama 3.3)         | ~250ms                     |
+| Gemini 2.0 Flash         | ~800ms                     |
+| OpenAI GPT-4o            | ~1200ms                    |
+| Claude 3.5 Sonnet        | ~1500ms                    |
+| OpenRouter (DeepSeek-R1) | ~2000ms                    |
 
 ---
 
