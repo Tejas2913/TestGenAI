@@ -131,3 +131,9 @@ scratch/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+
+# ------------------------------------------------------------------------------
+# 9. Local E2E Test Artifacts
+# ------------------------------------------------------------------------------
+backend/e2e_job_id*.txt
+backend/e2e_token.txt
