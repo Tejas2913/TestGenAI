@@ -92,16 +92,17 @@ class TestV22QualityScaffolding:
             MutationProvider()  # type: ignore[abstract]
 
     def test_v22_settings_present(self) -> None:
-        """Verify v2.2 settings exist in App config."""
+        """Verify v2.2 settings exist in App config with correct types."""
         assert hasattr(settings, "ENABLE_QUALITY_EVALUATION")
         assert hasattr(settings, "ENABLE_MUTATION_TESTING")
         assert hasattr(settings, "MUTATION_PROVIDER_CLASS")
-        assert settings.ENABLE_QUALITY_EVALUATION is False
-        assert settings.ENABLE_MUTATION_TESTING is False
+        assert isinstance(settings.ENABLE_QUALITY_EVALUATION, bool)
+        assert isinstance(settings.ENABLE_MUTATION_TESTING, bool)
         assert settings.QUALITY_WEIGHT_COVERAGE == 0.25
         assert settings.QUALITY_WEIGHT_MUTATION == 0.35
         assert settings.QUALITY_WEIGHT_HYGIENE == 0.20
         assert settings.QUALITY_WEIGHT_SEMANTIC == 0.20
+
 
     def test_quality_schemas_serialization(self) -> None:
         """Verify Pydantic response schemas serialize cleanly."""

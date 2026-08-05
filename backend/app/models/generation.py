@@ -77,6 +77,7 @@ class Generation(BaseModel):
     quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     quality_rating: Mapped[str | None] = mapped_column(String(50), nullable=True)
     mutation_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    mutation_duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.0)
     killed_mutants: Mapped[int | None] = mapped_column(Integer, nullable=True)
     survived_mutants: Mapped[int | None] = mapped_column(Integer, nullable=True)
     timeout_mutants: Mapped[int | None] = mapped_column(Integer, nullable=True)

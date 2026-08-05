@@ -686,7 +686,7 @@ class TestSandboxIntegration:
             patch.object(engine_mod, "SessionLocal"),
             patch.object(engine_mod, "JobRepository", return_value=mock_job_repo),
             patch.object(engine_mod, "GenerationService", return_value=mock_service),
-            patch.object(engine_mod, "GeminiProvider"),
+            patch.object(engine_mod, "LLMProviderRouter"),
             patch.object(engine_mod, "GenerationRepository"),
         ):
             _run_job_sync(job_id, {"source_code": "def add(a,b): return a+b"})
@@ -715,7 +715,7 @@ class TestSandboxIntegration:
             patch.object(engine_mod, "SessionLocal"),
             patch.object(engine_mod, "JobRepository", return_value=mock_job_repo),
             patch.object(engine_mod, "GenerationService", return_value=mock_service),
-            patch.object(engine_mod, "GeminiProvider"),
+            patch.object(engine_mod, "LLMProviderRouter"),
             patch.object(engine_mod, "GenerationRepository"),
         ):
             _run_job_sync(job_id, {"source_code": "def add(a,b): return a+b"})

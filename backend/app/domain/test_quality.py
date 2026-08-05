@@ -13,11 +13,12 @@ from app.domain.test_smell import TestSmellSummary
 class SemanticQualityRating:
     """LLM-assisted semantic quality evaluation scores on a 1-10 scale."""
 
+    evaluated: bool = False
     assertion_strength: float = 0.0
     edge_case_coverage: float = 0.0
     readability: float = 0.0
     exception_handling: float = 0.0
-    reasoning: str = ""
+    reasoning: str = "Semantic quality evaluation was not executed for this job."
 
 
 @dataclass
@@ -27,7 +28,7 @@ class QualityBreakdown:
     coverage_score: float = 0.0
     mutation_score: float = 0.0
     smell_hygiene_score: float = 0.0
-    semantic_score: float = 0.0
+    semantic_score: float | None = None
 
 
 @dataclass

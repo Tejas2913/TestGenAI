@@ -783,3 +783,19 @@ class TestAllProvidersMockMode:
     def test_estimate_cost_positive(self, ProviderClass):
         provider = ProviderClass(mock_mode=True)
         assert provider.estimate_cost(100, 50) >= 0.0
+
+
+def test_provider_stats_snapshot_no_deadlock():
+    """Regression test ensuring _ProviderStats.snapshot() does not deadlock."""
+    from app.infrastructure.providers.health_monitor import _ProviderStats
+    stats = _ProviderStats()
+    stats.record(success=True, latency_ms=100.0)
+    stats.record(success=False, latency_ms=500.0, error_type="timeout")
+
+    # Call snapshot directly — must complete without blocking/deadlocking
+    snap = stats.snapshot()
+    assert snap["total_requests"] == 2
+    assert snap["successful_requests"] == 1
+    assert snap["failed_requests"] == 1
+    assert snap["average_latency_ms"] == 300.0
+

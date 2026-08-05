@@ -17,7 +17,13 @@ export interface JobSummary {
   checkpoint_updated_at?: string | null;
   generation_id?: string | null;
   error_code?: string | null;
-  error_detail?: string | null;
+  repair_attempted?: boolean | null;
+  quality_metrics?: QualityMetrics | null;
+  coverage_line_pct?: number | null;
+  coverage_branch_pct?: number | null;
+  coverage_total_statements?: number | null;
+  coverage_covered_statements?: number | null;
+  coverage_missing_statements?: number | null;
   created_at: string;
   updated_at: string;
 }

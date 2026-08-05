@@ -24,9 +24,16 @@ export const QualityCard: React.FC<QualityCardProps> = ({ quality, loading, erro
 
   if (error || !quality) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Overall Quality</h3>
-        <p className="mt-3 text-xs text-gray-400">Quality metrics not available.</p>
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Overall Quality</h3>
+          <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            NOT EVALUATED
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+          Advanced Quality Evaluation was not enabled for this job.
+        </p>
       </div>
     );
   }

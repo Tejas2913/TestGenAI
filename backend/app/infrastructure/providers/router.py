@@ -30,6 +30,93 @@ from app.infrastructure.providers.provider_registry import GLOBAL_REGISTRY
 from app.infrastructure.routing_strategies.base import BaseRoutingStrategy
 
 logger = structlog.get_logger()
+def normalize_payload(payload: Any) -> PromptPayload:
+    """Centralized backward-compatibility adapter for PromptPayload contracts.
+
+    Normalizes any supported PromptPayload object or dictionary into a
+    v2.3/v2.4 PromptPayload dataclass instance.
+
+    Supported Contracts:
+      1. v2.3 / v2.4 PromptPayload (dataclass with rendered_system, rendered_user)
+      2. Legacy / V1 PromptPayload (Pydantic model or object with system_prompt, developer_prompt, user_prompt)
+      3. Dict matching either format
+
+    Raises:
+      ValueError: If payload is None or neither supported contract is satisfied with valid content.
+    """
+    if payload is None:
+        raise ValueError("PromptPayload cannot be None.")
+
+    # 1. Pass-through for existing v2.3/v2.4 PromptPayload dataclasses
+    if isinstance(payload, PromptPayload):
+        if not payload.rendered_system and not payload.rendered_user:
+            raise ValueError("PromptPayload missing prompt content: rendered_system and rendered_user are empty.")
+        return payload
+
+    def get_val(key: str, default: Any = None) -> Any:
+        if isinstance(payload, dict):
+            return payload.get(key, default)
+        return getattr(payload, key, default)
+
+    rendered_system = get_val("rendered_system")
+    rendered_user = get_val("rendered_user")
+    system_prompt = get_val("system_prompt")
+    developer_prompt = get_val("developer_prompt")
+    user_prompt = get_val("user_prompt")
+
+    # Contract A: v2.3 / v2.4 fields explicitly present
+    if rendered_system is not None or rendered_user is not None:
+        sys_str = str(rendered_system or "").strip()
+        usr_str = str(rendered_user or "").strip()
+        if not sys_str and not usr_str:
+            raise ValueError("PromptPayload missing prompt content: rendered_system and rendered_user are empty.")
+
+    # Contract B: Legacy / V1 fields present
+    elif system_prompt is not None or user_prompt is not None:
+        sys_parts = []
+        if system_prompt:
+            sys_parts.append(str(system_prompt).strip())
+        if developer_prompt:
+            sys_parts.append(str(developer_prompt).strip())
+
+        sys_str = "\n\n".join(sys_parts)
+        usr_str = str(user_prompt or "").strip()
+
+        if not sys_str and not usr_str:
+            raise ValueError("PromptPayload missing prompt content: system_prompt and user_prompt are empty.")
+
+    else:
+        raise ValueError(
+            "Unsupported PromptPayload contract. Must contain either "
+            "(rendered_system, rendered_user) or (system_prompt, user_prompt)."
+        )
+
+    agent_name = str(get_val("agent_name") or "generator")
+    template_name = str(get_val("template_name") or "default")
+    version = str(get_val("version") or "v2.4")
+    prompt_version = str(get_val("prompt_version") or "v1")
+
+    # Token estimation: use provided if positive, else compute from char length
+    raw_tokens = get_val("estimated_tokens")
+    if raw_tokens is not None and isinstance(raw_tokens, int) and raw_tokens > 0:
+        estimated_tokens = raw_tokens
+    else:
+        total_chars = len(sys_str) + len(usr_str)
+        estimated_tokens = max(1, total_chars // 4)
+
+    metadata = get_val("metadata") or {}
+
+    return PromptPayload(
+        template_name=template_name,
+        rendered_system=sys_str,
+        rendered_user=usr_str,
+        version=version,
+        agent_name=agent_name,
+        repository_summary=str(get_val("repository_summary") or ""),
+        prompt_version=prompt_version,
+        estimated_tokens=estimated_tokens,
+        metadata=metadata,
+    )
 
 
 class LLMProviderRouter:
@@ -160,7 +247,7 @@ class LLMProviderRouter:
 
     def execute_prompt(
         self,
-        prompt_payload: PromptPayload,
+        prompt_payload: Any,
         strategy: Optional[BaseRoutingStrategy] = None,
         options: Optional[Dict] = None,
         workflow_id: Optional[str] = None,
@@ -169,12 +256,13 @@ class LLMProviderRouter:
         """Route and execute PromptPayload through optimal provider with failover.
 
         v2.4 enhancements over v2.3:
+          - Centralized PromptPayload normalization (legacy V1 & v2.3/v2.4 supported)
           - Health scores are injected into strategy metrics
           - ProviderFailoverManager handles retry + backoff
           - HealthMonitor and CostTracker are updated after every invocation
 
         Args:
-            prompt_payload: Rendered PromptPayload context.
+            prompt_payload: Legacy V1 or v2.3/v2.4 PromptPayload or dict.
             strategy: Optional routing strategy override.
             options: Optional runtime options.
             workflow_id: For log correlation and cost tracking.
@@ -185,7 +273,11 @@ class LLMProviderRouter:
 
         Raises:
             ProviderUnavailableError: If all providers + retries are exhausted.
+            ValueError: If prompt_payload contract is invalid/malformed.
         """
+        # 0. Normalize payload to v2.3/v2.4 contract
+        prompt_payload = normalize_payload(prompt_payload)
+
         # 1. Build health metrics for HealthAwareStrategy
         health_metrics = self._build_health_metrics()
 
@@ -244,12 +336,39 @@ class LLMProviderRouter:
         return response
 
     # ------------------------------------------------------------------
+    # generate() — LLMProvider compatibility shim (for GenerationService)
+    # ------------------------------------------------------------------
+
+    def generate(self, payload: Any, options: Optional[Dict] = None) -> str:
+        """Drop-in replacement for LLMProvider.generate() with automatic failover.
+
+        Accepts both Legacy/V1 and v2.3/v2.4 PromptPayloads.  Normalizes payload
+        at boundary and routes through execute_prompt() for full failover, health
+        monitoring, and cost tracking.
+
+        Args:
+            payload: Legacy V1 or v2.3/v2.4 PromptPayload or dict.
+            options: Optional runtime options.
+
+        Returns:
+            Raw LLM response string (same contract as GeminiProvider.generate).
+        """
+        norm_payload = normalize_payload(payload)
+        response = self.execute_prompt(prompt_payload=norm_payload, options=options)
+        self.last_usage = {
+            "input_tokens": response.prompt_tokens,
+            "output_tokens": response.completion_tokens,
+            "total_tokens": response.total_tokens,
+        }
+        return response.response_text
+
+    # ------------------------------------------------------------------
     # Streaming execute (v2.4 new)
     # ------------------------------------------------------------------
 
     def stream_execute_prompt(
         self,
-        prompt_payload: PromptPayload,
+        prompt_payload: Any,
         strategy: Optional[BaseRoutingStrategy] = None,
         options: Optional[Dict] = None,
         workflow_id: Optional[str] = None,
@@ -264,6 +383,9 @@ class LLMProviderRouter:
             StreamChunk objects; the final chunk has is_final=True.
         """
         from app.infrastructure.providers.streaming import stream_from_response
+
+        # Normalize payload
+        prompt_payload = normalize_payload(prompt_payload)
 
         # Select provider
         health_metrics = self._build_health_metrics()

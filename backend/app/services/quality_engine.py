@@ -126,7 +126,7 @@ class QualityEngine:
                 coverage_score=round(cov_subscore, 1),
                 mutation_score=round(mut_subscore, 1),
                 smell_hygiene_score=round(hygiene_subscore, 1),
-                semantic_score=round(semantic_subscore, 1),
+                semantic_score=round(semantic_subscore, 1) if semantic_rating is not None else None,
             )
 
             overall_score = (

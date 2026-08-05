@@ -109,10 +109,18 @@ export const QualityDashboard: React.FC<QualityDashboardProps> = ({ jobId }) => 
                     missing_statements: 0,
                     total_statements: 0,
                   }
+                : (job?.coverage_line_pct !== undefined && job?.coverage_line_pct !== null)
+                ? {
+                    line_coverage_pct: job.coverage_line_pct,
+                    branch_coverage_pct: job.coverage_branch_pct ?? undefined,
+                    covered_statements: job.coverage_covered_statements || 0,
+                    missing_statements: job.coverage_missing_statements || 0,
+                    total_statements: job.coverage_total_statements || 0,
+                  }
                 : null
             }
-            loading={loadingQuality}
-            error={errorQuality}
+            loading={loadingQuality && !job?.coverage_line_pct}
+            error={job?.coverage_line_pct !== undefined && job?.coverage_line_pct !== null ? null : errorQuality}
           />
         </ErrorBoundary>
 

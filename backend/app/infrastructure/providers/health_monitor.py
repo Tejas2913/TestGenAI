@@ -111,20 +111,51 @@ class _ProviderStats:
         return round(0.7 * uptime + 0.3 * latency_factor, 4)
 
     def snapshot(self) -> dict:
-        """Return a JSON-serialisable snapshot."""
+        """Return a JSON-serialisable snapshot.
+
+        NOTE: All values are computed inline while the lock is already held
+        to avoid re-entrant deadlock (threading.Lock is non-reentrant).
+        """
         with self._lock:
+            latencies = self._latencies
+            total = self.total_requests
+            successful = self.successful_requests
+            failed = self.failed_requests
+
+            # average_latency_ms — inline (no re-lock)
+            avg_lat = round(sum(latencies) / len(latencies), 2) if latencies else 0.0
+
+            # p95_latency_ms — inline (no re-lock)
+            if latencies:
+                sorted_lat = sorted(latencies)
+                idx = math.ceil(0.95 * len(sorted_lat)) - 1
+                p95_lat = round(sorted_lat[max(0, idx)], 2)
+            else:
+                p95_lat = 0.0
+
+            # uptime_percentage — inline
+            uptime_pct = round(100.0 * successful / total, 2) if total else 100.0
+
+            # failure_rate — inline
+            fail_rate = round(failed / total, 4) if total else 0.0
+
+            # health_score — inline
+            uptime_f = uptime_pct / 100.0
+            lat_factor = max(0.0, 1.0 - avg_lat / 5_000.0)
+            h_score = round(0.7 * uptime_f + 0.3 * lat_factor, 4)
+
             return {
-                "total_requests": self.total_requests,
-                "successful_requests": self.successful_requests,
-                "failed_requests": self.failed_requests,
+                "total_requests": total,
+                "successful_requests": successful,
+                "failed_requests": failed,
                 "timeouts": self.timeouts,
                 "authentication_errors": self.authentication_errors,
                 "rate_limit_errors": self.rate_limit_errors,
-                "average_latency_ms": self.average_latency_ms,
-                "p95_latency_ms": self.p95_latency_ms,
-                "uptime_percentage": self.uptime_percentage,
-                "failure_rate": self.failure_rate,
-                "health_score": self.health_score,
+                "average_latency_ms": avg_lat,
+                "p95_latency_ms": p95_lat,
+                "uptime_percentage": uptime_pct,
+                "failure_rate": fail_rate,
+                "health_score": h_score,
                 "last_failure": self.last_failure.isoformat() if self.last_failure else None,
                 "last_success": self.last_success.isoformat() if self.last_success else None,
                 "last_error_message": self.last_error_message,

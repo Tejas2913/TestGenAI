@@ -108,6 +108,7 @@ class QualityPipeline:
         generation.survived_mutants = mut.survived_mutants
         generation.timeout_mutants = mut.timeout_mutants
         generation.error_mutants = mut.incompatible_mutants
+        generation.mutation_duration_ms = mut.duration_ms
 
         smells = quality_result.smells
         generation.smell_count = smells.total_smells

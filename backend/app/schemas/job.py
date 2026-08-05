@@ -107,4 +107,11 @@ class JobStatusResponse(BaseModel):
         description="Quality evaluation metrics for completed job generation",
     )
 
+    # Sandbox coverage metrics populated on COMPLETED jobs
+    coverage_line_pct: float | None = Field(default=None)
+    coverage_branch_pct: float | None = Field(default=None)
+    coverage_total_statements: int | None = Field(default=None)
+    coverage_covered_statements: int | None = Field(default=None)
+    coverage_missing_statements: int | None = Field(default=None)
+
     model_config = {"from_attributes": True}

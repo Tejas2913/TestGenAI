@@ -14,14 +14,11 @@ export interface PipelineTimelineProps {
 }
 
 export const PipelineTimeline: React.FC<PipelineTimelineProps> = ({ job }) => {
-  const getStageStatus = (stage: PipelineStageConfig): 'completed' | 'running' | 'pending' | 'failed' => {
+  const getStageStatus = (stage: PipelineStageConfig): 'completed' | 'running' | 'pending' | 'failed' | 'skipped' => {
     if (!job) return 'pending';
 
     const status = job.status;
     const checkpoint = (job.last_checkpoint || '').toLowerCase();
-
-    if (status === 'completed') return 'completed';
-    if (status === 'failed') return 'failed';
 
     if (status === 'running' || status === 'quality_running') {
       if (checkpoint.includes(stage.id)) return 'running';
@@ -30,6 +27,36 @@ export const PipelineTimeline: React.FC<PipelineTimelineProps> = ({ job }) => {
       const checkpointIdx = PIPELINE_STAGES.findIndex((s) => checkpoint.includes(s.id));
       if (checkpointIdx >= 0 && stageIdx < checkpointIdx) return 'completed';
       if (stageIdx === checkpointIdx + 1) return 'running';
+      return 'pending';
+    }
+
+    if (status === 'failed') return 'failed';
+
+    if (status === 'completed') {
+      switch (stage.id) {
+        case 'generation':
+        case 'persistence':
+          return 'completed';
+        case 'sandbox':
+          return 'completed';
+        case 'coverage':
+          return (job.coverage_line_pct !== undefined && job.coverage_line_pct !== null) ? 'completed' : 'skipped';
+        case 'self_healing':
+          return job.repair_attempted ? 'completed' : 'skipped';
+        case 'smells':
+        case 'quality_eval':
+          return job.quality_metrics ? 'completed' : 'skipped';
+        case 'mutation':
+          if (
+            job.quality_metrics?.mutation &&
+            (job.quality_metrics.mutation.total_mutants > 0 || job.quality_metrics.mutation.duration_ms > 0)
+          ) {
+            return 'completed';
+          }
+          return 'skipped';
+        default:
+          return 'completed';
+      }
     }
 
     return 'pending';
@@ -63,6 +90,9 @@ export const PipelineTimeline: React.FC<PipelineTimelineProps> = ({ job }) => {
             icon = (
               <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
             );
+          } else if (status === 'skipped') {
+            circleStyle = 'bg-slate-100 text-slate-400 border-slate-300 dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-400';
+            icon = <span className="text-xs font-semibold">–</span>;
           } else if (status === 'failed') {
             circleStyle = 'bg-red-500 text-white border-red-500';
             icon = (

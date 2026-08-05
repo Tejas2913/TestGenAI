@@ -23,6 +23,7 @@ import CodePanel from './CodePanel'
 import WarningsPanel from './WarningsPanel'
 import SandboxPanel from './SandboxPanel'
 import QualityDashboard from '../Quality/QualityDashboard'
+import ConfidencePanel from './ConfidencePanel'
 
 const TABS = [
   { id: 'summary',   label: 'Summary' },

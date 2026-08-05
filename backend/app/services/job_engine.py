@@ -55,6 +55,7 @@ from app.models.job import (
     JOB_STATUS_RETRYING,
 )
 from app.ai.providers.gemini_provider import GeminiProvider
+from app.infrastructure.providers.router import LLMProviderRouter
 from app.repositories.generation_repository import GenerationRepository
 from app.repositories.job_repository import JobRepository
 from app.services.generation_service import GenerationService
@@ -131,14 +132,9 @@ def _run_job_sync(job_id: str, input_data: dict) -> None:
         # Step 2: Build service collaborators
         # ----------------------------------------------------------------
         gen_repo = GenerationRepository(db)
-        provider = GeminiProvider(
-            api_key=settings.GEMINI_API_KEY,
-            model_name=settings.GEMINI_MODEL,
-            temperature=settings.GEMINI_TEMPERATURE,
-            max_output_tokens=settings.GEMINI_MAX_OUTPUT_TOKENS,
-            timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
-            max_retries=settings.GEMINI_MAX_RETRIES,
-        )
+        # Use the enterprise router so Gemini 503/429 automatically
+        # fails over to OpenAI → Claude → Groq → OpenRouter.
+        provider = LLMProviderRouter(mock_mode=settings.MOCK_MODE)
 
         # Inject SandboxClient when sandbox is enabled
         sandbox_client = None
@@ -258,6 +254,7 @@ def _run_job_sync(job_id: str, input_data: dict) -> None:
                     "quality_score": generation.quality_score,
                     "quality_rating": generation.quality_rating,
                     "mutation_score": generation.mutation_score,
+                    "mutation_duration_ms": generation.mutation_duration_ms,
                     "killed_mutants": generation.killed_mutants,
                     "survived_mutants": generation.survived_mutants,
                     "timeout_mutants": generation.timeout_mutants,

@@ -80,11 +80,12 @@ class TestSmellSummaryResponse(BaseModel):
 class SemanticQualityResponse(BaseModel):
     """API response model for LLM-assisted semantic quality ratings."""
 
-    assertion_strength: float = Field(default=0.0, description="Assertion strength rating (1.0 to 10.0)")
-    edge_case_coverage: float = Field(default=0.0, description="Edge case coverage rating (1.0 to 10.0)")
-    readability: float = Field(default=0.0, description="Test code readability rating (1.0 to 10.0)")
-    exception_handling: float = Field(default=0.0, description="Exception handling rating (1.0 to 10.0)")
-    reasoning: str = Field(default="", description="LLM qualitative reasoning narrative")
+    evaluated: bool = Field(default=False, description="Whether semantic evaluation was executed")
+    assertion_strength: float | None = Field(default=None, description="Assertion strength rating (1.0 to 10.0)")
+    edge_case_coverage: float | None = Field(default=None, description="Edge case coverage rating (1.0 to 10.0)")
+    readability: float | None = Field(default=None, description="Test code readability rating (1.0 to 10.0)")
+    exception_handling: float | None = Field(default=None, description="Exception handling rating (1.0 to 10.0)")
+    reasoning: str = Field(default="Semantic quality evaluation was not executed for this job.", description="LLM qualitative reasoning narrative")
 
 
 class QualityBreakdownResponse(BaseModel):
@@ -93,7 +94,7 @@ class QualityBreakdownResponse(BaseModel):
     coverage_score: float = Field(default=0.0, description="Line & branch coverage sub-score (0.0 to 100.0)")
     mutation_score: float = Field(default=0.0, description="Mutation score sub-score (0.0 to 100.0)")
     smell_hygiene_score: float = Field(default=0.0, description="Code smell hygiene sub-score (0.0 to 100.0)")
-    semantic_score: float = Field(default=0.0, description="Semantic quality sub-score (0.0 to 100.0)")
+    semantic_score: float | None = Field(default=None, description="Semantic quality sub-score (0.0 to 100.0, null if not evaluated)")
 
 
 class QualityMetricsResponse(BaseModel):

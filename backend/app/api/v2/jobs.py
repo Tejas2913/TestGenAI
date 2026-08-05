@@ -165,6 +165,12 @@ async def get_job_status(
     # V2.2: Extract quality metrics for completed jobs
     # ----------------------------------------------------------------
     quality_schema = None
+    cov_line = None
+    cov_branch = None
+    cov_total = None
+    cov_covered = None
+    cov_missing = None
+
     if job.status == "completed" and job.generation_id is not None:
         try:
             from app.repositories.generation_repository import GenerationRepository
@@ -174,48 +180,68 @@ async def get_job_status(
                 QualityPipelineStatus,
                 MutationSummaryResponse,
                 TestSmellSummaryResponse,
+                SemanticQualityResponse,
             )
             import json
 
             gen_repo = GenerationRepository(job_repo._session)
             gen = gen_repo.get_by_id(job.generation_id)
-            if gen is not None and getattr(gen, "quality_score", None) is not None:
-                smell_breakdown = {}
-                if getattr(gen, "smell_breakdown_json", None):
-                    try:
-                        smell_breakdown = json.loads(gen.smell_breakdown_json)
-                    except Exception:
-                        pass
+            if gen is not None:
+                cov_line = getattr(gen, "coverage_line_pct", None)
+                cov_branch = getattr(gen, "coverage_branch_pct", None)
+                cov_total = getattr(gen, "coverage_total_statements", None)
+                cov_covered = getattr(gen, "coverage_covered_statements", None)
+                cov_missing = getattr(gen, "coverage_missing_statements", None)
 
-                mut_resp = MutationSummaryResponse(
-                    total_mutants=(gen.killed_mutants or 0) + (gen.survived_mutants or 0) + (gen.timeout_mutants or 0) + (gen.error_mutants or 0),
-                    killed_mutants=gen.killed_mutants or 0,
-                    survived_mutants=gen.survived_mutants or 0,
-                    timeout_mutants=gen.timeout_mutants or 0,
-                    incompatible_mutants=gen.error_mutants or 0,
-                    mutation_score_pct=gen.mutation_score or 0.0,
-                    duration_ms=0.0,
-                )
-                smell_resp = TestSmellSummaryResponse(
-                    total_smells=gen.smell_count or 0,
-                    high_severity_count=smell_breakdown.get("high", 0),
-                    medium_severity_count=smell_breakdown.get("medium", 0),
-                    low_severity_count=smell_breakdown.get("low", 0),
-                )
-                breakdown = QualityBreakdownResponse(
-                    coverage_score=gen.coverage_line_pct or 0.0,
-                    mutation_score=gen.mutation_score or 0.0,
-                    smell_hygiene_score=max(0.0, 100.0 - (gen.smell_count or 0) * 5.0),
-                    semantic_score=0.0,
-                )
-                quality_schema = QualityMetricsResponse(
-                    overall_score=gen.quality_score or 0.0,
-                    rating=gen.quality_rating or "UNKNOWN",
-                    pipeline_status=QualityPipelineStatus.COMPLETED,
-                    breakdown=breakdown,
-                    mutation=mut_resp,
-                    smells=smell_resp,
-                )
+                if getattr(gen, "quality_score", None) is not None:
+                    smell_breakdown = {}
+                    if getattr(gen, "smell_breakdown_json", None):
+                        try:
+                            smell_breakdown = json.loads(gen.smell_breakdown_json)
+                        except Exception:
+                            pass
+
+                    mut_resp = MutationSummaryResponse(
+                        total_mutants=(gen.killed_mutants or 0) + (gen.survived_mutants or 0) + (gen.timeout_mutants or 0) + (gen.error_mutants or 0),
+                        killed_mutants=gen.killed_mutants or 0,
+                        survived_mutants=gen.survived_mutants or 0,
+                        timeout_mutants=gen.timeout_mutants or 0,
+                        incompatible_mutants=gen.error_mutants or 0,
+                        mutation_score_pct=gen.mutation_score or 0.0,
+                        duration_ms=getattr(gen, "mutation_duration_ms", 0.0) or 0.0,
+                    )
+                    smell_resp = TestSmellSummaryResponse(
+                        total_smells=gen.smell_count or 0,
+                        high_severity_count=smell_breakdown.get("high", 0),
+                        medium_severity_count=smell_breakdown.get("medium", 0),
+                        low_severity_count=smell_breakdown.get("low", 0),
+                    )
+                    high_ded = smell_breakdown.get("high", 0) * 15.0
+                    med_ded = smell_breakdown.get("medium", 0) * 8.0
+                    low_ded = smell_breakdown.get("low", 0) * 3.0
+                    hygiene_score = max(0.0, min(100.0, 100.0 - (high_ded + med_ded + low_ded))) if gen.smell_count is not None else 100.0
+                    breakdown = QualityBreakdownResponse(
+                        coverage_score=gen.coverage_line_pct or 0.0,
+                        mutation_score=gen.mutation_score or 0.0,
+                        smell_hygiene_score=hygiene_score,
+                        semantic_score=None,
+                    )
+                    quality_schema = QualityMetricsResponse(
+                        overall_score=gen.quality_score or 0.0,
+                        rating=gen.quality_rating or "UNKNOWN",
+                        pipeline_status=QualityPipelineStatus.COMPLETED,
+                        breakdown=breakdown,
+                        mutation=mut_resp,
+                        smells=smell_resp,
+                        semantic=SemanticQualityResponse(
+                            evaluated=False,
+                            assertion_strength=None,
+                            edge_case_coverage=None,
+                            readability=None,
+                            exception_handling=None,
+                            reasoning="Semantic quality evaluation was not executed for this job.",
+                        ),
+                    )
         except Exception as exc:
             logger.warning("quality_metrics_extraction_failed", error=str(exc), job_id=job_id)
 
@@ -232,6 +258,11 @@ async def get_job_status(
         updated_at=job.updated_at,
         confidence=confidence_schema,
         quality_metrics=quality_schema,
+        coverage_line_pct=cov_line,
+        coverage_branch_pct=cov_branch,
+        coverage_total_statements=cov_total,
+        coverage_covered_statements=cov_covered,
+        coverage_missing_statements=cov_missing,
     )
 
 

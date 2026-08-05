@@ -24,10 +24,11 @@ V1 GenerationResponse contract:
   updated_at           — UTC timestamp of last update
 """
 
+from typing import Any
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 from app.domain.failure_classifier import FailureCategory
@@ -123,3 +124,19 @@ class GenerationResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_validator("repair_attempted", "repair_success", mode="before")
+    @classmethod
+    def _default_repair_bool(cls, v: Any) -> bool:
+        return False if v is None else bool(v)
+
+    @field_validator("repair_count", mode="before")
+    @classmethod
+    def _default_repair_int(cls, v: Any) -> int:
+        return 0 if v is None else int(v)
+
+    @field_validator("repair_duration_ms", mode="before")
+    @classmethod
+    def _default_repair_float(cls, v: Any) -> float:
+        return 0.0 if v is None else float(v)
+

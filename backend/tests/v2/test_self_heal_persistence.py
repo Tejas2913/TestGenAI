@@ -95,7 +95,7 @@ class TestSelfHealPersistence:
             initial_json,
             "def test_calc(): assert calc(1, 2) == 3",
         ]
-        monkeypatch.setattr("app.services.job_engine.GeminiProvider", lambda *a, **kw: mock_provider)
+        monkeypatch.setattr("app.services.job_engine.LLMProviderRouter", lambda *a, **kw: mock_provider)
 
         # Enable sandbox & self heal in settings
         from app.core.config import settings

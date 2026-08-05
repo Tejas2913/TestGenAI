@@ -187,6 +187,19 @@ class OpenRouterProvider(BaseLLMProvider):
 }"""
         elif agent.startswith("generator"):
             mock_text = f"""{{
+  "function_name": "add",
+  "imports": ["import pytest"],
+  "setup_code": "",
+  "test_cases": [
+    {{
+      "name": "test_add_positive_numbers",
+      "description": "Test addition of two positive numbers",
+      "category": "unit",
+      "inputs": {{"a": 2, "b": 3}},
+      "expected_output": "5",
+      "assertions": ["assert add(2, 3) == 5"]
+    }}
+  ],
   "generated_tests": [
     {{
       "target_module": "math_utils",
