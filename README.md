@@ -2,7 +2,7 @@
 
 # 🧪 TestGen AI
 
-### Production-Ready Multi-Agent AI Framework for Automated Test Generation
+### Multi-Agent AI Framework for Automated Test Generation
 
 *Automate test generation using a coordinated pipeline of specialized AI agents across multiple LLM providers — from planning through review and conditional repair.*
 
