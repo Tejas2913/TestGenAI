@@ -678,7 +678,7 @@ self.register_provider(MistralProvider(
 | ✅**v2.2**   | Repository Context Engine, PromptManager, Jinja2 templates                                                       |
 | ✅**v2.3**   | Multi-LLM routing: Gemini + OpenAI + Claude, provider abstraction                                                |
 | ✅**v2.3.1** | Groq + OpenRouter providers, offline-first test suite (703 tests)                                                |
-| ✅**v2.4.0** | Enterprise Provider Intelligence: streaming, health monitoring, registry-driven routing, failover, cost tracking |
+| ✅**v2.4.0** | Enterprise Provider Intelligence: streaming, health monitoring, registry-driven routing, failover, mutation testing, cost tracking |
 
 ### Planned
 
@@ -686,10 +686,9 @@ self.register_provider(MistralProvider(
 | ---------------- | ------------------------------------------------------------------------------ |
 | 🔲**v3.0** | Repository Knowledge Graph — semantic code understanding via graph embeddings |
 | 🔲**v3.1** | Coverage-aware planning — generate tests targeting uncovered branches         |
-| 🔲**v3.2** | Mutation testing integration — validate test effectiveness via mutations      |
-| 🔲**v3.3** | Execution feedback loop — use sandbox results to drive repair agent           |
-| 🔲**v3.4** | Human-in-the-loop review — async approval workflow before commit              |
-| 🔲**v3.5** | Provider persistence — migrate health/cost state to persistent storage        |
+| 🔲**v3.2** | Execution feedback loop — use sandbox results to drive repair agent           |
+| 🔲**v3.3** | Human-in-the-loop review — async approval workflow before commit              |
+| 🔲**v3.4** | Provider persistence — migrate health/cost state to persistent storage        |
 
 ---
 
