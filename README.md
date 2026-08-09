@@ -59,6 +59,39 @@ The system is built for software teams looking to automate repetitive test autho
 | ✅**703 Passing Tests**         | Offline-first test suite with deterministic mock mode                        |
 
 ---
+## 🎥 Demo
+
+See TestGen AI v2.4.0 in action in the complete application walkthrough below.
+
+The recorded demonstration shows the end-to-end workflow of the platform, including:
+
+- Providing Python source code for test generation
+- Multi-agent test generation using PlannerAgent, GeneratorAgent, ReviewerAgent, and conditional RepairAgent
+- Multi-provider LLM routing
+- Generated pytest test cases
+- Docker-based sandbox execution
+- Test execution results and validation
+- Code coverage analysis
+- Test-smell analysis
+- Mutation testing
+- Quality evaluation and scoring
+- Generation history and persisted results
+- The React-based quality dashboard
+
+### Full Application Walkthrough
+
+▶️ **[Watch the TestGen AI v2.4.0 Demo Video](https://drive.google.com/file/d/1-kNLplQC6n-IhvB6hTgme9VbXXCuJSVN/view?usp=sharing)**
+
+The video demonstrates the actual running application rather than a static prototype, providing a visual walkthrough of the complete generation and quality-evaluation pipeline.
+
+> **Demo environment:** TestGen AI v2.4.0  
+> **Primary language:** Python  
+> **Testing framework:** pytest  
+> **Execution:** Docker sandbox  
+> **Frontend:** React + Vite  
+> **Backend:** FastAPI
+
+---
 
 ## Architecture
 
